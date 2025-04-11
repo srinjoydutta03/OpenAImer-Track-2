@@ -98,14 +98,32 @@ jobs:
           
       - name: Download validation dataset
         run: |
+          # Setup authentication - Method 1 (using just the credentials file)
           mkdir -p ~/.kaggle
-          echo "${{ secrets.KAGGLE_CONFIG }}" > ~/.kaggle/kaggle.json
+          echo "{\"username\":\"${{ secrets.KAGGLE_USERNAME }}\",\"key\":\"${{ secrets.KAGGLE_KEY }}\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          kaggle datasets download -d ${{ secrets.KAGGLE_DATASET }} -p ./data
-          unzip ./data/*.zip -d ./data
-        env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          
+          # Verify credentials file
+          if [ ! -s ~/.kaggle/kaggle.json ]; then
+            echo "::error::Kaggle credentials file is empty or not created"
+            exit 1
+          fi
+          
+          # Test API access before download
+          echo "Testing Kaggle API access..."
+          kaggle datasets list -s ${{ secrets.KAGGLE_DATASET }} || { echo "::error::Failed to access Kaggle API"; exit 1; }
+          
+          # Download dataset with error handling
+          echo "Downloading dataset..."
+          kaggle datasets download -d ${{ secrets.KAGGLE_DATASET }} -p ./data --unzip || { echo "::error::Failed to download dataset"; exit 1; }
+          
+          # Check if files were actually downloaded
+          if [ ! "$(ls -A ./data)" ]; then
+            echo "::error::Dataset directory is empty after download"
+            exit 1
+          fi
+          
+          echo "Dataset download completed successfully"
           
       - name: Evaluate model
         id: evaluate
