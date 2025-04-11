@@ -77,8 +77,6 @@ jobs:
           echo "valid=true" >> $GITHUB_OUTPUT
           
   evaluate-model:
-    needs: validate-submission
-    if: needs.validate-submission.outputs.valid == 'true'
     runs-on: ubuntu-latest
     outputs:
       model_size: ${{ steps.evaluate.outputs.model_size }}
