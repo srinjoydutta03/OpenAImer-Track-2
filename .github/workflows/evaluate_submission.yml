@@ -100,7 +100,7 @@ jobs:
         run: |
           # Setup authentication - Method 1 (using just the credentials file)
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"${{ secrets.KAGGLE_USERNAME }}\",\"key\":\"${{ secrets.KAGGLE_KEY }}\"}" > ~/.kaggle/kaggle.json
+          echo ${{ secrets.KAGGLE_CONFIG }}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
           # Verify credentials file
