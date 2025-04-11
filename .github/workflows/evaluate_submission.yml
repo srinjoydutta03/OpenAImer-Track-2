@@ -5,9 +5,17 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'submissions/**'
+      
+
+  push:
+    branches:
+      - main
+    paths:
+      - 'submissions/**'
 
 jobs:
   validate-submission:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       username: ${{ steps.extract-info.outputs.username }}
@@ -22,7 +30,7 @@ jobs:
           USERNAME=$(echo "$PR_FILES" | grep -oP 'submissions/\K[^/]+' | head -1)
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       
       - name: Validate submission structure
         id: validate
