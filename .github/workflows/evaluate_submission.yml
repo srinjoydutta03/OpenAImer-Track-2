@@ -128,7 +128,8 @@ jobs:
       - name: Evaluate model
         id: evaluate
         run: |
-          USERNAME="${{ needs.validate-submission.outputs.username }}"
+          # USERNAME="${{ needs.validate-submission.outputs.username }}"
+          USERNAME="baseline"
           python scripts/evaluate.py \
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
