@@ -30,6 +30,45 @@ def get_model_size_mb(model_path):
 
 def load_model(model_path, model_format):
     """Load the model based on its format."""
+    submission_dir = os.path.dirname(model_path)
+    
+    # Check for custom requirements.txt and install dependencies
+    requirements_path = os.path.join(submission_dir, 'requirements.txt')
+    if os.path.exists(requirements_path):
+        print(f"Installing custom requirements from {requirements_path}")
+        try:
+            import subprocess
+            import sys
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_path])
+            print("Successfully installed custom requirements")
+        except Exception as e:
+            print(f"Warning: Failed to install custom requirements: {e}")
+    
+    # Check for custom model loader - works for any model format
+    loader_path = os.path.join(submission_dir, 'model_loader.py')
+    if os.path.exists(loader_path):
+        try:
+            import sys
+            import importlib.util
+            
+            # Add submission directory to path
+            if submission_dir not in sys.path:
+                sys.path.insert(0, submission_dir)
+            
+            # Load the module dynamically
+            spec = importlib.util.spec_from_file_location("model_loader", loader_path)
+            loader_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(loader_module)
+            
+            if hasattr(loader_module, 'load_model'):
+                print(f"Using custom model loader from {loader_path}")
+                model = loader_module.load_model(model_path)
+                return model
+            else:
+                print(f"Warning: model_loader.py exists but doesn't contain a load_model function")
+        except Exception as e:
+            print(f"Error using custom model loader: {e}")
+            print("Falling back to standard model loading")
     if model_format in ['pytorch', 'pt', 'pth']:
         if not HAS_TORCH:
             raise ImportError("PyTorch is required to load this model format")
@@ -45,18 +84,26 @@ def load_model(model_path, model_format):
             # Read metadata to get architecture if available
             metadata_path = os.path.join(os.path.dirname(model_path), 'metadata.json')
             
+            architecture = 'resnet18'  # Default
+            num_classes = 100  # Default
+            
             if os.path.exists(metadata_path):
                 with open(metadata_path, 'r') as f:
                     metadata = json.load(f)
-                
-                # Use architecture from metadata if specified, otherwise default to resnet18
-                architecture = metadata.get('architecture', 'resnet18')
-            else:
-                architecture = 'resnet18'  # Default to ResNet18
             
-            # Initialize the model based on architecture
+            # Try to infer num_classes from the checkpoint if not in metadata
+            if 'fc.weight' in checkpoint:
+                inferred_classes = checkpoint['fc.weight'].size(0)
+                num_classes = inferred_classes
+                print(f"Detected {num_classes} output classes from model weights")
+            elif 'state_dict' in checkpoint and 'fc.weight' in checkpoint['state_dict']:
+                inferred_classes = checkpoint['state_dict']['fc.weight'].size(0)
+                num_classes = inferred_classes
+                print(f"Detected {num_classes} output classes from model weights")
+            
+            # Initialize the model based on architecture with the correct number of classes
             if hasattr(models, architecture):
-                model = getattr(models, architecture)()
+                model = getattr(models, architecture)(num_classes=num_classes)
                 
                 # Handle both direct state dict and checkpoint with state_dict key
                 if 'state_dict' in checkpoint:
@@ -67,36 +114,13 @@ def load_model(model_path, model_format):
             else:
                 raise ValueError(f"Unsupported model architecture: {architecture}")
         else:
-            return checkpoint  
+            return checkpoint
     
     elif model_format in ['tensorflow', 'tf', 'h5', 'pb', 'saved_model']:
         if not HAS_TF:
             raise ImportError("TensorFlow is required to load this model format")
-        metadata_path = os.path.join(os.path.dirname(model_path), 'metadata.json')
-        custom_objects = {}
-        
-        if os.path.exists(metadata_path):
-            with open(metadata_path, 'r') as f:
-                metadata = json.load(f)
-            
-            # If metadata has custom_layers section, import and register them
-            if 'custom_layers' in metadata:
-                for layer_info in metadata['custom_layers']:
-                    # Format should be: {"module": "mymodule.layers", "name": "CustomLayer"}
-                    module_name = layer_info.get('module')
-                    class_name = layer_info.get('name')
-                    
-                    if module_name and class_name:
-                        try:
-                            module = __import__(module_name, fromlist=[class_name])
-                            custom_layer = getattr(module, class_name)
-                            custom_objects[class_name] = custom_layer
-                            print(f"Registered custom layer: {class_name}")
-                        except (ImportError, AttributeError) as e:
-                            print(f"Warning: Could not import custom layer {class_name}: {e}")
-        
         # Load the model with custom objects
-        return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        return tf.keras.models.load_model(model_path)
     
     elif model_format in ['tflite']:
         if not HAS_TF:

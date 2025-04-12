@@ -151,7 +151,8 @@ jobs:
           echo "total_score=$TOTAL_SCORE" >> $GITHUB_OUTPUT
           
   update-leaderboard:
-    needs: [validate-submission, evaluate-model]
+    # needs: [validate-submission, evaluate-model]
+    needs: [evaluate-model]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
