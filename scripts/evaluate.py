@@ -33,12 +33,70 @@ def load_model(model_path, model_format):
     if model_format in ['pytorch', 'pt', 'pth']:
         if not HAS_TORCH:
             raise ImportError("PyTorch is required to load this model format")
-        return torch.load(model_path, map_location='cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Load the file
+        checkpoint = torch.load(model_path, map_location='cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Check if it's a state dict or full model
+        if isinstance(checkpoint, dict) and not hasattr(checkpoint, 'to'):
+            # This is a state dict, need to create the model first
+            import torchvision.models as models
+            
+            # Read metadata to get architecture if available
+            metadata_path = os.path.join(os.path.dirname(model_path), 'metadata.json')
+            
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                
+                # Use architecture from metadata if specified, otherwise default to resnet18
+                architecture = metadata.get('architecture', 'resnet18')
+            else:
+                architecture = 'resnet18'  # Default to ResNet18
+            
+            # Initialize the model based on architecture
+            if hasattr(models, architecture):
+                model = getattr(models, architecture)()
+                
+                # Handle both direct state dict and checkpoint with state_dict key
+                if 'state_dict' in checkpoint:
+                    model.load_state_dict(checkpoint['state_dict'])
+                else:
+                    model.load_state_dict(checkpoint)
+                return model
+            else:
+                raise ValueError(f"Unsupported model architecture: {architecture}")
+        else:
+            return checkpoint  
     
     elif model_format in ['tensorflow', 'tf', 'h5', 'pb', 'saved_model']:
         if not HAS_TF:
             raise ImportError("TensorFlow is required to load this model format")
-        return tf.keras.models.load_model(model_path)
+        metadata_path = os.path.join(os.path.dirname(model_path), 'metadata.json')
+        custom_objects = {}
+        
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            
+            # If metadata has custom_layers section, import and register them
+            if 'custom_layers' in metadata:
+                for layer_info in metadata['custom_layers']:
+                    # Format should be: {"module": "mymodule.layers", "name": "CustomLayer"}
+                    module_name = layer_info.get('module')
+                    class_name = layer_info.get('name')
+                    
+                    if module_name and class_name:
+                        try:
+                            module = __import__(module_name, fromlist=[class_name])
+                            custom_layer = getattr(module, class_name)
+                            custom_objects[class_name] = custom_layer
+                            print(f"Registered custom layer: {class_name}")
+                        except (ImportError, AttributeError) as e:
+                            print(f"Warning: Could not import custom layer {class_name}: {e}")
+        
+        # Load the model with custom objects
+        return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
     
     elif model_format in ['tflite']:
         if not HAS_TF:
