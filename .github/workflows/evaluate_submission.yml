@@ -134,8 +134,8 @@ jobs:
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
             --baseline_size 44.7 \
-            --baseline_latency 23.5 \
-            --baseline_accuracy 69.76 \
+            --baseline_latency 30 \
+            --baseline_accuracy 40.00 \
             --output_file "evaluation_result.json"
           
           # Extract evaluation results

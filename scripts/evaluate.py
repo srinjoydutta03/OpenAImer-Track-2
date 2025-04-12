@@ -10,6 +10,7 @@ import json
 # Import conditionally based on model format
 try:
     import torch
+    import torch.nn as nn
     import torchvision.transforms as transforms
     from torchvision.datasets import ImageFolder
     HAS_TORCH = True
@@ -103,7 +104,8 @@ def load_model(model_path, model_format):
             
             # Initialize the model based on architecture with the correct number of classes
             if hasattr(models, architecture):
-                model = getattr(models, architecture)(num_classes=num_classes)
+                model = getattr(models, architecture)(pretrained=True)
+                model.fc = nn.Linear(model.fc.in_features, num_classes)
                 
                 # Handle both direct state dict and checkpoint with state_dict key
                 if 'state_dict' in checkpoint:

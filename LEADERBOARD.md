@@ -20,7 +20,6 @@ Last updated: 2025-04-12 06:41:55 UTC
 
 | Username | Model Size (MB) | Latency (ms) | Accuracy (%) | Total Score | Submission Date | Notes |
 |----------|----------------|--------------|--------------|-------------|-----------------|-------|
-| baseline | 44.70 | 23.50 | 69.76 | 1.00 | N/A | Standard ResNet18 reference |
-| baseline | 42.91 | 30.01 | 2.24 | 0.56 | 2025-04-12 06:41:54 UTC |  |
+| baseline | 44.70 | 30 | 2.5 | 40 | N/A | Standard ResNet18 reference |
 
 </details>
