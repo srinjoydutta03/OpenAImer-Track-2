@@ -30,7 +30,7 @@ jobs:
           USERNAME=$(echo "$PR_FILES" | grep -oP 'submissions/\K[^/]+' | head -1)
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
       
       - name: Validate submission structure
         id: validate
