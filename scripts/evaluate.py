@@ -135,6 +135,7 @@ def load_model(model_path, model_format):
 
 def measure_latency(model, model_format, data_loader, num_runs=100):
     """Measure inference latency of the model."""
+    print("Measuring latency ...")
     # Get a sample input
     if model_format in ['pytorch', 'pt', 'pth']:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -216,6 +217,7 @@ def measure_latency(model, model_format, data_loader, num_runs=100):
 
 def evaluate_accuracy(model, model_format, data_loader):
     """Evaluate model accuracy on the validation set."""
+    print("Evaluating accuracy ...")
     correct = 0
     total = 0
     

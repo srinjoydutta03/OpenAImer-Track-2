@@ -169,7 +169,8 @@ jobs:
           
       - name: Update leaderboard
         run: |
-          USERNAME="${{ needs.validate-submission.outputs.username }}"
+          # USERNAME="${{ needs.validate-submission.outputs.username }}"
+          USERNAME="baseline"
           MODEL_SIZE="${{ needs.evaluate-model.outputs.model_size }}"
           LATENCY="${{ needs.evaluate-model.outputs.latency }}"
           ACCURACY="${{ needs.evaluate-model.outputs.accuracy }}"
@@ -190,5 +191,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add LEADERBOARD.md
-          git commit -m "Update leaderboard with submission from ${{ needs.validate-submission.outputs.username }}"
-          git push 
+          # git commit -m "Update leaderboard with submission from ${{ needs.validate-submission.outputs.username }}"
+          git commit -m "Update leaderboard with submission from baseline"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 

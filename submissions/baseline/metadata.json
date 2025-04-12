@@ -1,6 +1,6 @@
 {
   "username": "baseline",
   "model_format": "pytorch",
-  "model_size_mb": 44.7,
+  "model_size_mb": 45,
   "additional_notes": "Standard ResNet18 model used as baseline"
 } 
