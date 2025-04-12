@@ -42,9 +42,10 @@ Each metric is normalized relative to the original ResNet18 baseline performance
        ├── model.{pt|pth|h5|pb|saved_model|tflite}
        └── metadata.json
        └── model_loader.py (optional)
+       └── requirements.txt (optional)
    ```
 
-   If you happen to create a complex model that doesn't support standard model loading as mentioned in the evaluate_script, you can provide a `model_loader.py` script of your own which will contain a `load_model` function that will load your model from your path.
+   If you happen to create a complex model that doesn't support standard model loading as mentioned in the evaluate_script, you can provide a `model_loader.py` script of your own which will contain a `load_model` function that will load your model from your path. Also, any external dependencies that you might need specify them in `requirements.txt` file.
 3. Create a `metadata.json` file with the following information:
    ```json
    {
@@ -72,6 +73,8 @@ The current leaderboard can be found in [LEADERBOARD.md](LEADERBOARD.md). It is 
 - Competition Start: 12-April-2025 6:00 PM IST
 - Submission Start: 17-April-2025 6:00 PM IST
 - Submission Deadline: 17-April-2025 11:59 PM IST
+
+#### PR'S SHOULD ONLY BE SUBMITTED IN THE PERIOD MENTIONED ABOVE, ANY PR'S BEFORE THE SUBMISSION START WILL BE DECLARED NULL AND VOID AND MAY INCUR NEGATIVE POINTS
 
 ## Technical Requirements
 - Your model must load using standard PyTorch, TensorFlow, or TFLite loading functions
