@@ -77,6 +77,7 @@ jobs:
           echo "valid=true" >> $GITHUB_OUTPUT
           
   evaluate-model:
+    needs: validate-submission
     runs-on: ubuntu-latest
     outputs:
       model_size: ${{ steps.evaluate.outputs.model_size }}
@@ -128,8 +129,7 @@ jobs:
       - name: Evaluate model
         id: evaluate
         run: |
-          # USERNAME="${{ needs.validate-submission.outputs.username }}"
-          USERNAME="baseline"
+          USERNAME="${{ needs.validate-submission.outputs.username }}"
           python scripts/evaluate.py \
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
@@ -151,8 +151,7 @@ jobs:
           echo "total_score=$TOTAL_SCORE" >> $GITHUB_OUTPUT
           
   update-leaderboard:
-    # needs: [validate-submission, evaluate-model]
-    needs: [evaluate-model]
+    needs: [validate-submission, evaluate-model]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
