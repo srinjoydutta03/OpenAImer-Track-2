@@ -102,16 +102,48 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             USERNAME="${{ github.event.inputs.username }}"
           else
-            # For push events, detect the username from the commit files
-            CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
-            USERNAME=$(echo "$CHANGED_FILES" | grep -oP 'submissions/\K[^/]+' | head -1)
-            # Default to baseline if detection fails
+            # For push events, check if it's a merge from a PR
+            PR_NUMBER=$(git log -1 --pretty=%B | grep -oP 'Merge pull request #\K\d+' || echo "")
+            
+            if [ -n "$PR_NUMBER" ]; then
+              echo "This is a merge from PR #$PR_NUMBER, getting details from GitHub API"
+              # Get PR details using GitHub API
+              PR_FILES=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/files --jq '.[].filename')
+              echo "PR Files: $PR_FILES"
+              USERNAME=$(echo "$PR_FILES" | grep -oP 'submissions/\K[^/]+' | sort | uniq | head -1)
+              echo "Username from PR #$PR_NUMBER: $USERNAME"
+            else
+              # For direct pushes, get a comprehensive list of changed files
+              git fetch --prune --unshallow || true
+              CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+              
+              # Try to extract username from submissions directory pattern
+              USERNAME=$(echo "$CHANGED_FILES" | grep -oP 'submissions/\K[^/]+' | sort | uniq | head -1)
+              echo "Detected username from changed files: $USERNAME"
+              
+              # If detection fails, try to get it from the commit message
+              if [ -z "$USERNAME" ]; then
+                echo "Username detection from files failed, trying commit message..."
+                COMMIT_MSG=$(git log -1 --pretty=%B)
+                # Look for patterns like "username/user123" or "from username" in commit message
+                USERNAME=$(echo "$COMMIT_MSG" | grep -oP '(?:from|by|for)\s+\K\w+' | head -1)
+                echo "Username from commit message: $USERNAME"
+              fi
+            fi
+            
+            # Default to baseline if all detection methods fail
             if [ -z "$USERNAME" ]; then
+              echo "WARNING: Could not detect username, using baseline"
               USERNAME="baseline"
             fi
           fi
+          echo "Final username: $USERNAME"
           echo "username=$USERNAME" >> $GITHUB_OUTPUT
-        
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
