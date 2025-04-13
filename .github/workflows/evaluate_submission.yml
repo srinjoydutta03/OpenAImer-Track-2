@@ -20,6 +20,7 @@ on:
       - 'submissions/**'
 
 jobs:
+  # Only runs on PR events to validate submission structure
   validate-submission:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -82,17 +83,34 @@ jobs:
           # All checks passed
           echo "valid=true" >> $GITHUB_OUTPUT
           
+  # Only runs on push (merged PR) or workflow_dispatch events
   evaluate-model:
-    needs: validate-submission
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && needs.validate-submission.outputs.valid == 'true')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
+      username: ${{ steps.get-username.outputs.username }}
       model_size: ${{ steps.evaluate.outputs.model_size }}
       latency: ${{ steps.evaluate.outputs.latency }}
       accuracy: ${{ steps.evaluate.outputs.accuracy }}
       total_score: ${{ steps.evaluate.outputs.total_score }}
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Get username
+        id: get-username
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            USERNAME="${{ github.event.inputs.username }}"
+          else
+            # For push events, detect the username from the commit files
+            CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+            USERNAME=$(echo "$CHANGED_FILES" | grep -oP 'submissions/\K[^/]+' | head -1)
+            # Default to baseline if detection fails
+            if [ -z "$USERNAME" ]; then
+              USERNAME="baseline"
+            fi
+          fi
+          echo "username=$USERNAME" >> $GITHUB_OUTPUT
         
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -136,13 +154,7 @@ jobs:
       - name: Evaluate model
         id: evaluate
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            USERNAME="${{ github.event.inputs.username }}"
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            USERNAME="${{ needs.validate-submission.outputs.username }}"
-          else
-            USERNAME="baseline"  # Default for push events
-          fi
+          USERNAME="${{ steps.get-username.outputs.username }}"
           python scripts/evaluate.py \
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
@@ -163,9 +175,10 @@ jobs:
           echo "accuracy=$ACCURACY" >> $GITHUB_OUTPUT
           echo "total_score=$TOTAL_SCORE" >> $GITHUB_OUTPUT
           
+  # Only runs on push (merged PR) or workflow_dispatch events
   update-leaderboard:
     needs: evaluate-model
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -182,12 +195,7 @@ jobs:
           
       - name: Update leaderboard
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            USERNAME="${{ github.event.inputs.username }}"
-          else
-            USERNAME="baseline"  # Default for push events
-          fi
-          
+          USERNAME="${{ needs.evaluate-model.outputs.username }}"
           MODEL_SIZE="${{ needs.evaluate-model.outputs.model_size }}"
           LATENCY="${{ needs.evaluate-model.outputs.latency }}"
           ACCURACY="${{ needs.evaluate-model.outputs.accuracy }}"
@@ -208,8 +216,40 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add LEADERBOARD.md
-          # git commit -m "Update leaderboard with submission from ${{ needs.validate-submission.outputs.username }}"
-          git commit -m "Update leaderboard with submission from baseline"
+          git commit -m "Update leaderboard with submission from ${{ needs.evaluate-model.outputs.username }}"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          
+  # Clean up model files after evaluation (only on push events)
+  cleanup-model:
+    needs: [evaluate-model, update-leaderboard]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Delete model files
+        run: |
+          USERNAME="${{ needs.evaluate-model.outputs.username }}"
+          if [ -d "submissions/$USERNAME" ] && [ "$USERNAME" != "baseline" ]; then
+            MODEL_FILES=$(find "submissions/$USERNAME" -type f -name "model.*")
+            if [ -n "$MODEL_FILES" ]; then
+              for MODEL_FILE in $MODEL_FILES; do
+                echo "Deleting model file: $MODEL_FILE"
+                rm -f "$MODEL_FILE"
+              done
+              
+              # Create a placeholder file to indicate model was deleted after evaluation
+              echo "Model was evaluated and removed on $(date)" > "submissions/$USERNAME/model.evaluated"
+              
+              # Commit and push changes
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              git add "submissions/$USERNAME"
+              git commit -m "Clean up model files for $USERNAME after evaluation"
+              git push
+            fi
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 
