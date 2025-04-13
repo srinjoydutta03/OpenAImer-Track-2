@@ -275,12 +275,38 @@ jobs:
               # Create a placeholder file to indicate model was deleted after evaluation
               echo "Model was evaluated and removed on $(date)" > "submissions/$USERNAME/model.evaluated"
               
-              # Commit and push changes
+              # Commit and push changes with proper git setup
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"
+              
+              # Pull latest changes to avoid conflicts
+              git pull --rebase origin main
+              
+              # Add, commit and push with retry logic
               git add "submissions/$USERNAME"
               git commit -m "Clean up model files for $USERNAME after evaluation"
-              git push
+              
+              # Try to push up to 3 times with pull before each retry
+              MAX_RETRIES=3
+              RETRY=0
+              while [ $RETRY -lt $MAX_RETRIES ]; do
+                if git push; then
+                  echo "Successfully pushed changes"
+                  break
+                else
+                  RETRY=$((RETRY+1))
+                  echo "Push failed, retrying ($RETRY/$MAX_RETRIES)..."
+                  if [ $RETRY -lt $MAX_RETRIES ]; then
+                    git pull --rebase origin main
+                    sleep 3
+                  fi
+                fi
+              done
+              
+              if [ $RETRY -eq $MAX_RETRIES ]; then
+                echo "Failed to push after $MAX_RETRIES attempts"
+                exit 1
+              fi
             fi
           fi
         env:
