@@ -6,6 +6,12 @@ on:
     paths:
       - 'submissions/**'
       
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'GitHub username of the submission'
+        required: true
+        type: string
 
   push:
     branches:
@@ -78,6 +84,7 @@ jobs:
           
   evaluate-model:
     needs: validate-submission
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && needs.validate-submission.outputs.valid == 'true')
     runs-on: ubuntu-latest
     outputs:
       model_size: ${{ steps.evaluate.outputs.model_size }}
@@ -129,7 +136,13 @@ jobs:
       - name: Evaluate model
         id: evaluate
         run: |
-          USERNAME="${{ needs.validate-submission.outputs.username }}"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            USERNAME="${{ github.event.inputs.username }}"
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            USERNAME="${{ needs.validate-submission.outputs.username }}"
+          else
+            USERNAME="baseline"  # Default for push events
+          fi
           python scripts/evaluate.py \
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
@@ -151,7 +164,8 @@ jobs:
           echo "total_score=$TOTAL_SCORE" >> $GITHUB_OUTPUT
           
   update-leaderboard:
-    needs: [validate-submission, evaluate-model]
+    needs: evaluate-model
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -168,8 +182,12 @@ jobs:
           
       - name: Update leaderboard
         run: |
-          # USERNAME="${{ needs.validate-submission.outputs.username }}"
-          USERNAME="baseline"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            USERNAME="${{ github.event.inputs.username }}"
+          else
+            USERNAME="baseline"  # Default for push events
+          fi
+          
           MODEL_SIZE="${{ needs.evaluate-model.outputs.model_size }}"
           LATENCY="${{ needs.evaluate-model.outputs.latency }}"
           ACCURACY="${{ needs.evaluate-model.outputs.accuracy }}"
