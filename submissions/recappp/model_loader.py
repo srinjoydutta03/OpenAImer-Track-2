@@ -1,21 +1,22 @@
-import torch
-import torch.nn as nn
-from torchvision import models
+def load_model(model_path, device='cpu'):
+    from torchvision import models
+    import torch.nn as nn
 
-def load_model(model_path):
-    # Load base ResNet18 without pre-trained weights
     model = models.resnet18(pretrained=False)
 
-    # Remove layers 2, 3, and 4
+    # Remove all residual layers
+    model.layer1 = nn.Identity()
     model.layer2 = nn.Identity()
     model.layer3 = nn.Identity()
     model.layer4 = nn.Identity()
 
-    # Adjust final FC layer to match output of layer1
-    model.fc = nn.Linear(model.layer1[-1].conv2.out_channels, 100)  # 100 classes
+    # Keep stem as in training: conv1, bn1, relu, maxpool
+    # Do NOT change bn1, relu, maxpool to Identity if you used them during training
 
-    # Load the saved model weights
-    checkpoint = torch.load(model_path, map_location='cpu')
+    model.fc = nn.Linear(64, 100)  # Match the trained model's fc
+
+    # Load state dict
+    checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint)
 
     return model

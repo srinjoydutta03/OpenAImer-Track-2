@@ -143,9 +143,17 @@ def measure_latency(model, model_format, data_loader, num_runs=100):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
         model.eval()
+
+        try:
+            param = next(model.parameters())
+            input_dtype = param.dtype
+        except (StopIteration, AttributeError):
+            print("Warning: Could not determine model dtype, using float32")
+            input_dtype = torch.float32
         
         # Warm up
         for inputs, _ in data_loader:
+            inputs = inputs.to(dtype=input_dtype)
             inputs = inputs.to(device)
             with torch.no_grad():
                 _ = model(inputs)
@@ -158,6 +166,7 @@ def measure_latency(model, model_format, data_loader, num_runs=100):
                 if i >= num_runs:
                     break
                 
+                inputs = inputs.to(dtype=input_dtype)  # Add this line
                 inputs = inputs.to(device)
                 start_time = time.time()
                 _ = model(inputs)
@@ -227,9 +236,17 @@ def evaluate_accuracy(model, model_format, data_loader):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
         model.eval()
+
+        try:
+            param = next(model.parameters())
+            input_dtype = param.dtype
+        except (StopIteration, AttributeError):
+            print("Warning: Could not determine model dtype, using float32")
+            input_dtype = torch.float32
         
         with torch.no_grad():
             for inputs, labels in data_loader:
+                inputs, labels = inputs.to(dtype=input_dtype), labels.to(device)
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
