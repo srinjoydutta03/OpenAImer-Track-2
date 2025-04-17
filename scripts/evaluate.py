@@ -159,6 +159,7 @@ def measure_latency(model, model_format, data_loader, num_runs=100):
                 if i >= num_runs:
                     break
                 
+                inputs = inputs.to(dtype=next(model.parameters()).dtype)  # Add this line
                 inputs = inputs.to(device)
                 start_time = time.time()
                 _ = model(inputs)
