@@ -6,6 +6,3 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import time
-
-
-The code provided in model.pt is sufficient for loading the model.
