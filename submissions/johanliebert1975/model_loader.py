@@ -1,11 +1,5 @@
 import torch
 import torch.nn as nn
-from torchvision import transforms
-from PIL import Image
-
-# ------------------------
-# Model Definitions
-# ------------------------
 
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -20,7 +14,7 @@ class DepthwiseSeparableConv(nn.Module):
     def forward(self, x):
         x = self.relu(self.bn_depthwise(self.depthwise(x)))
         x = self.bn_pointwise(self.pointwise(x))
-        return self.relu(x)
+        return x
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -33,27 +27,30 @@ class ResidualBlock(nn.Module):
                 nn.Conv2d(in_channels, out_channels, 1, stride, bias=False),
                 nn.BatchNorm2d(out_channels)
             )
-        else:
-            self.shortcut = nn.Identity()
 
     def forward(self, x):
-        return self.conv2(self.conv1(x)) + self.shortcut(x)
+        residual = self.shortcut(x)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return x + residual
 
-class SmallerResNet18(nn.Module):
-    def __init__(self, num_classes=100):
+class OptimizedResNet18(nn.Module):
+    def __init__(self, num_classes=1000):
         super().__init__()
-        self.conv1 = DepthwiseSeparableConv(3, 8, stride=2)
-        self.bn1 = nn.BatchNorm2d(8)
+        self.conv1 = nn.Conv2d(3, 64, 7, 2, 3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
-        self.pool1 = nn.MaxPool2d(3, stride=2, padding=1)
+        self.maxpool = nn.MaxPool2d(3, 2, 1)
+        self.conv2_x = self._make_layer(64, 128, stride=2)
+        self.conv3_x = self._make_layer(128, 256, stride=2)
+        self.conv4_x = self._make_layer(256, 512, stride=2)
+        self.conv5_x = self._make_layer(512, 512, stride=2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        self.fc = nn.Linear(512, num_classes)
 
-        self.layer1 = self._make_layer(8, 16, stride=2)
-        self.layer2 = self._make_layer(16, 32, stride=2)
-        self.layer3 = self._make_layer(32, 64, stride=2)
-        self.layer4 = self._make_layer(64, 64, stride=2)
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(64, num_classes)
+        # Add normalization values based on the training transform
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+        self.std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
 
     def _make_layer(self, in_c, out_c, stride):
         return nn.Sequential(
@@ -62,19 +59,22 @@ class SmallerResNet18(nn.Module):
         )
 
     def forward(self, x):
+        # Move mean and std to the same device as the input tensor
+        mean = self.mean.to(x.device)
+        std = self.std.to(x.device)
+        
+        # Normalize input image (before the network processing)
+        x = (x - mean) / std
+        
         x = self.relu(self.bn1(self.conv1(x)))
-        x = self.pool1(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        x = self.maxpool(x)
+        x = self.conv2_x(x)
+        x = self.conv3_x(x)
+        x = self.conv4_x(x)
+        x = self.conv5_x(x)
         x = self.avgpool(x)
-        return self.fc(torch.flatten(x, 1))
-
-
-# ------------------------
-# Load Function
-# ------------------------
+        x = torch.flatten(x, 1)
+        return self.fc(x)
 
 def load_model(model_path):
     """
@@ -82,15 +82,15 @@ def load_model(model_path):
     Should return a torch.nn.Module (in eval mode) ready for inference.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    num_classes = 100
-    model = SmallerResNet18(num_classes=num_classes)
+    num_classes = 100  # set this to your actual number of classes
+    model = OptimizedResNet18(num_classes=num_classes)
     checkpoint = torch.load(model_path, map_location=device)
-
+    
     if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
         state_dict = checkpoint['state_dict']
     else:
         state_dict = checkpoint
-
+    
     model.load_state_dict(state_dict)
     model.to(device).eval()
     return model
