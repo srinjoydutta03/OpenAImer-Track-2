@@ -1,0 +1,8 @@
+{
+    "model_name": "model.pth",
+    "model_size_mb": 1.17,
+    "latency_ms": 0.01,
+    "accuracy": 67.41
+    "username": "Ashu-Viron",
+    "teamname": "Hash Hackers"
+}
