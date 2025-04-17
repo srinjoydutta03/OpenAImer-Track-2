@@ -1,6 +1,6 @@
 # ResNet18 Model Compression Challenge Leaderboard
 
-Last updated: 2025-04-17 15:06:49 UTC
+Last updated: 2025-04-17 15:14:37 UTC
 
 | Rank | Username | Model Size (MB) | Size Score | Latency (ms) | Latency Score | Accuracy (%) | Accuracy Score | Total Score | Submission Date |
 |------|----------|----------------|------------|--------------|---------------|--------------|----------------|-------------|------------------|
@@ -38,5 +38,6 @@ Last updated: 2025-04-17 15:06:49 UTC
 | johanliebert1975 | 0.31 | 4.71 | 0.82 | 45.31 | 2025-04-17 14:53:52 UTC |  |
 | kartik1pandey | 42.90 | 30.33 | 1.60 | 0.63 | 2025-04-17 15:00:54 UTC |  |
 | recappp | 2.68 | 16.72 | 1.82 | 5.56 | 2025-04-17 15:06:48 UTC |  |
+| DipanMondal | 3.77 | 44.76 | 2.92 | 3.79 | 2025-04-17 15:14:37 UTC |  |
 
 </details>
