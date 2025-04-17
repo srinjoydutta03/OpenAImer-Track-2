@@ -1,6 +1,6 @@
 # ResNet18 Model Compression Challenge Leaderboard
 
-Last updated: 2025-04-17 18:10:40 UTC
+Last updated: 2025-04-17 18:39:07 UTC
 
 | Rank | Username | Model Size (MB) | Size Score | Latency (ms) | Latency Score | Accuracy (%) | Accuracy Score | Total Score | Submission Date |
 |------|----------|----------------|------------|--------------|---------------|--------------|----------------|-------------|------------------|
@@ -14,6 +14,7 @@ Last updated: 2025-04-17 18:10:40 UTC
 | 8 | sohambose1 | 42.91 | 1.04 | 30.24 | 0.99 | 28.66 | 0.72 | 0.90 | 2025-04-13 19:02:57 UTC |
 | 9 | Sayandip2023 | 42.91 | 1.04 | 30.47 | 0.98 | 3.80 | 0.10 | 0.65 | 2025-04-17 13:56:36 UTC |
 | 10 | kartik1pandey | 42.90 | 1.04 | 30.33 | 0.99 | 1.60 | 0.04 | 0.63 | 2025-04-17 15:00:54 UTC |
+| 11 | UNKNOWNAR | 42.76 | 1.05 | 29.52 | 1.02 | 0.68 | 0.02 | 0.63 | 2025-04-17 18:39:07 UTC |
 
 ## Scoring Details
 
@@ -49,5 +50,6 @@ Last updated: 2025-04-17 18:10:40 UTC
 | atmikgoswami | 21.04 | 20.80 | 23.60 | 1.31 | 2025-04-17 17:46:55 UTC |  |
 | NeuralNets | 10.82 | 12.55 | 5.28 | 2.01 | 2025-04-17 17:52:19 UTC |  |
 | shadowbeast0 | 0.35 | 8.63 | 8.38 | 39.43 | 2025-04-17 18:10:40 UTC |  |
+| UNKNOWNAR | 42.76 | 29.52 | 0.68 | 0.63 | 2025-04-17 18:39:07 UTC |  |
 
 </details>
