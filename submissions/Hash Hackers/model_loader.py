@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+
 class ModelLoader:
     def _init_(
         self,
@@ -69,9 +70,7 @@ class ModelLoader:
             raise RuntimeError(f"Unrecognized checkpoint format: {type(raw)}")
 
         # Clean any DataParallel "module." prefixes
-        cleaned = {
-            k.replace("module.", ""): v for k, v in state_dict.items()
-        }
+        cleaned = {k.replace("module.", ""): v for k, v in state_dict.items()}
 
         # Load into model
         self.model.load_state_dict(cleaned, strict=True)
@@ -84,9 +83,23 @@ class ModelLoader:
         return self.model
 
 
-if _name_ == "_main_":
-    # Quick smoke-test
-    ckpt = "model.pth"
-    loader = ModelLoader(architecture="resnet18", num_classes=100)
-    model = loader.load_weights(ckpt)
-    print(f"Loaded {loader.architecture} → {type(model)} on {loader.device}")
+def load_model(
+    checkpoint_path: str,
+    architecture: str = "resnet18",
+    num_classes: int = 100,
+    device: str = None,
+) -> torch.nn.Module:
+    """
+    Utility function to load a model in one call.
+
+    Args:
+        checkpoint_path (str): Path to the model checkpoint (.pth file).
+        architecture (str): Model architecture name, e.g. 'resnet18'.
+        num_classes (int): Number of output classes.
+        device (str, optional): Device specifier, e.g. 'cuda:0' or 'cpu'.
+
+    Returns:
+        torch.nn.Module: Loaded model in eval mode.
+    """
+    loader = ModelLoader(architecture=architecture, num_classes=num_classes, device=device)
+    return loader.load_weights(checkpoint_path)
