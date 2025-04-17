@@ -2,6 +2,6 @@
   "username": "shadowbeast0",
   "teamname": "ByteMe",
   "model_format": "pytorch",
-  "model_size_mb": 42.8,
-  "additional_notes": "Standard ResNet18 model with second order pruning"
+  "model_size_mb": 0.358,
+  "additional_notes": "Compress ResNet18 model with half layer1 and Weighted Pruning"
 }
