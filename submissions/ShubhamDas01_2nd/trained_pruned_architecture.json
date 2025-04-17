@@ -1,0 +1,616 @@
+{
+    "model_type": "SlimResNet18",
+    "num_classes": 100,
+    "layers": [
+        {
+            "name": "conv1",
+            "type": "Conv2d",
+            "in_channels": 3,
+            "out_channels": 32,
+            "kernel_size": [
+                7,
+                7
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                3,
+                3
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 9,
+                "remaining_channels": 23
+            }
+        },
+        {
+            "name": "bn1",
+            "type": "BatchNorm2d",
+            "num_features": 32
+        },
+        {
+            "name": "relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "maxpool",
+            "type": "MaxPool2d"
+        },
+        {
+            "name": "layer1.0.conv1",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 32,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 9,
+                "remaining_channels": 23
+            }
+        },
+        {
+            "name": "layer1.0.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 32
+        },
+        {
+            "name": "layer1.0.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer1.0.conv2",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 32,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 9,
+                "remaining_channels": 23
+            }
+        },
+        {
+            "name": "layer1.0.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 32
+        },
+        {
+            "name": "layer1.1.conv1",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 32,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 9,
+                "remaining_channels": 23
+            }
+        },
+        {
+            "name": "layer1.1.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 32
+        },
+        {
+            "name": "layer1.1.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer1.1.conv2",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 32,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 9,
+                "remaining_channels": 23
+            }
+        },
+        {
+            "name": "layer1.1.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 32
+        },
+        {
+            "name": "layer2.0.conv1",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 64,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 19,
+                "remaining_channels": 45
+            }
+        },
+        {
+            "name": "layer2.0.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 64
+        },
+        {
+            "name": "layer2.0.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer2.0.conv2",
+            "type": "Conv2d",
+            "in_channels": 64,
+            "out_channels": 64,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 19,
+                "remaining_channels": 45
+            }
+        },
+        {
+            "name": "layer2.0.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 64
+        },
+        {
+            "name": "layer2.0.downsample.0",
+            "type": "Conv2d",
+            "in_channels": 32,
+            "out_channels": 64,
+            "kernel_size": [
+                1,
+                1
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                0,
+                0
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 19,
+                "remaining_channels": 45
+            }
+        },
+        {
+            "name": "layer2.0.downsample.1",
+            "type": "BatchNorm2d",
+            "num_features": 64
+        },
+        {
+            "name": "layer2.1.conv1",
+            "type": "Conv2d",
+            "in_channels": 64,
+            "out_channels": 64,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 19,
+                "remaining_channels": 45
+            }
+        },
+        {
+            "name": "layer2.1.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 64
+        },
+        {
+            "name": "layer2.1.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer2.1.conv2",
+            "type": "Conv2d",
+            "in_channels": 64,
+            "out_channels": 64,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 19,
+                "remaining_channels": 45
+            }
+        },
+        {
+            "name": "layer2.1.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 64
+        },
+        {
+            "name": "layer3.0.conv1",
+            "type": "Conv2d",
+            "in_channels": 64,
+            "out_channels": 128,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 38,
+                "remaining_channels": 90
+            }
+        },
+        {
+            "name": "layer3.0.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 128
+        },
+        {
+            "name": "layer3.0.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer3.0.conv2",
+            "type": "Conv2d",
+            "in_channels": 128,
+            "out_channels": 128,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 38,
+                "remaining_channels": 90
+            }
+        },
+        {
+            "name": "layer3.0.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 128
+        },
+        {
+            "name": "layer3.0.downsample.0",
+            "type": "Conv2d",
+            "in_channels": 64,
+            "out_channels": 128,
+            "kernel_size": [
+                1,
+                1
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                0,
+                0
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 38,
+                "remaining_channels": 90
+            }
+        },
+        {
+            "name": "layer3.0.downsample.1",
+            "type": "BatchNorm2d",
+            "num_features": 128
+        },
+        {
+            "name": "layer3.1.conv1",
+            "type": "Conv2d",
+            "in_channels": 128,
+            "out_channels": 128,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 38,
+                "remaining_channels": 90
+            }
+        },
+        {
+            "name": "layer3.1.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 128
+        },
+        {
+            "name": "layer3.1.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer3.1.conv2",
+            "type": "Conv2d",
+            "in_channels": 128,
+            "out_channels": 128,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 38,
+                "remaining_channels": 90
+            }
+        },
+        {
+            "name": "layer3.1.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 128
+        },
+        {
+            "name": "layer4.0.conv1",
+            "type": "Conv2d",
+            "in_channels": 128,
+            "out_channels": 256,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 76,
+                "remaining_channels": 180
+            }
+        },
+        {
+            "name": "layer4.0.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 256
+        },
+        {
+            "name": "layer4.0.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer4.0.conv2",
+            "type": "Conv2d",
+            "in_channels": 256,
+            "out_channels": 256,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 76,
+                "remaining_channels": 180
+            }
+        },
+        {
+            "name": "layer4.0.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 256
+        },
+        {
+            "name": "layer4.0.downsample.0",
+            "type": "Conv2d",
+            "in_channels": 128,
+            "out_channels": 256,
+            "kernel_size": [
+                1,
+                1
+            ],
+            "stride": [
+                2,
+                2
+            ],
+            "padding": [
+                0,
+                0
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 76,
+                "remaining_channels": 180
+            }
+        },
+        {
+            "name": "layer4.0.downsample.1",
+            "type": "BatchNorm2d",
+            "num_features": 256
+        },
+        {
+            "name": "layer4.1.conv1",
+            "type": "Conv2d",
+            "in_channels": 256,
+            "out_channels": 256,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 76,
+                "remaining_channels": 180
+            }
+        },
+        {
+            "name": "layer4.1.bn1",
+            "type": "BatchNorm2d",
+            "num_features": 256
+        },
+        {
+            "name": "layer4.1.relu",
+            "type": "ReLU"
+        },
+        {
+            "name": "layer4.1.conv2",
+            "type": "Conv2d",
+            "in_channels": 256,
+            "out_channels": 256,
+            "kernel_size": [
+                3,
+                3
+            ],
+            "stride": [
+                1,
+                1
+            ],
+            "padding": [
+                1,
+                1
+            ],
+            "pruning_info": {
+                "type": "structured",
+                "num_channels_pruned": 76,
+                "remaining_channels": 180
+            }
+        },
+        {
+            "name": "layer4.1.bn2",
+            "type": "BatchNorm2d",
+            "num_features": 256
+        },
+        {
+            "name": "avgpool",
+            "type": "AdaptiveAvgPool2d"
+        },
+        {
+            "name": "fc",
+            "type": "Linear",
+            "in_features": 256,
+            "out_features": 100
+        }
+    ]
+}
