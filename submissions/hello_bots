@@ -1,0 +1,137 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.quantization
+from torchvision import datasets, transforms, models
+from torch.utils.data import DataLoader
+import time
+import os
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("srinjoydutta/openaimer-2025-track-2-training-data")
+
+
+# ==== CONFIG ====
+BATCH_SIZE = 64
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+EPOCHS = 3
+DATA_DIR = path  
+
+# ==== TRANSFORMS ====
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
+
+train_set = datasets.ImageFolder(os.path.join(DATA_DIR, "train"), transform=transform)
+val_set = datasets.ImageFolder(os.path.join(DATA_DIR, "val"), transform=transform)
+
+train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
+val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False)
+
+# ==== TEACHER MODEL ====
+teacher = models.resnet18(pretrained=True).to(DEVICE)
+teacher.eval()
+
+# ==== STUDENT MODEL ====
+student = models.resnet18()
+student.fc = nn.Linear(student.fc.in_features, len(train_set.classes))  # match num classes
+student.to(DEVICE)
+
+# ==== DISTILLATION LOSS ====
+def distillation_loss(student_out, teacher_out, target, T=4.0, alpha=0.7):
+    soft_loss = F.kl_div(
+        F.log_softmax(student_out / T, dim=1),
+        F.softmax(teacher_out / T, dim=1),
+        reduction='batchmean'
+    ) * (T * T)
+    hard_loss = F.cross_entropy(student_out, target)
+    return alpha * soft_loss + (1 - alpha) * hard_loss
+
+# ==== TRAIN STUDENT ====
+optimizer = torch.optim.Adam(student.parameters(), lr=1e-3)
+
+print("🔁 Training student model with distillation...")
+for epoch in range(EPOCHS):
+    student.train()
+    total_loss = 0
+    for imgs, labels in train_loader:
+        imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
+        optimizer.zero_grad()
+        with torch.no_grad():
+            teacher_out = teacher(imgs)
+        student_out = student(imgs)
+        loss = distillation_loss(student_out, teacher_out, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {total_loss/len(train_loader):.4f}")
+
+# ==== EVALUATE ACCURACY ====
+def evaluate(model):
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for imgs, labels in val_loader:
+            imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
+            outputs = model(imgs)
+            _, preds = torch.max(outputs, 1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+    return correct / total
+
+acc = evaluate(student)
+print(f"✅ Accuracy: {acc:.4f}")
+
+# ==== PRUNING ====
+print("✂  Applying pruning...")
+import torch.nn.utils.prune as prune
+parameters_to_prune = []
+for module in student.modules():
+    if isinstance(module, torch.nn.Conv2d):
+        parameters_to_prune.append((module, 'weight'))
+
+prune.global_unstructured(
+    parameters_to_prune,
+    pruning_method=prune.L1Unstructured,
+    amount=0.4,
+)
+
+# ==== QUANTIZATION ====
+print("📦 Applying quantization...")
+student.eval()
+student.qconfig = torch.quantization.get_default_qconfig("fbgemm")
+student_fused = torch.quantization.fuse_modules(student, [['conv1', 'bn1', 'relu']], inplace=False)
+student_prepared = torch.quantization.prepare(student_fused, inplace=False)
+
+# Calibrate with one batch
+with torch.no_grad():
+    for imgs, _ in val_loader:
+        student_prepared(imgs.to(DEVICE))
+        break
+
+student_quantized = torch.quantization.convert(student_prepared, inplace=False)
+student_quantized.to("cpu")
+
+# ==== MEASURE LATENCY ====
+print("⏱  Measuring inference time...")
+sample = torch.randn(1, 3, 224, 224)
+repeats = 50
+start = time.time()
+for _ in range(repeats):
+    _ = student_quantized(sample)
+end = time.time()
+latency = (end - start) / repeats * 1000
+print(f"🚀 Avg Latency: {latency:.2f} ms")
+
+# ==== MODEL SIZE ====
+torch.save(student_quantized.state_dict(), "compressed_model.pth")
+model_size = os.path.getsize("compressed_model.pth") / 1e6
+print(f"💾 Model Size: {model_size:.2f} MB")
+
+# ==== DONE ====
+print("🎯 Final Metrics:")
+print(f"Accuracy: {acc*100:.2f}%")
+print(f"Latency: {latency:.2f} ms")
+print(f"Size: {model_size:.2f} MB")
