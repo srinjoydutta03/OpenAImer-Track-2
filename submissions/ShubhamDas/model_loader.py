@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader
 import time
 
 # Auto device selection
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"🖥️ Using device: {device}")
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# print(f"🖥️ Using device: {device}")
 
 # Load compressed half-precision model
-model = torch.jit.load('/content/final_resnet18_compressed.pt', map_location=device)
+model = torch.jit.load('/content/model.pt', map_location=device)
 model.eval()
 
 # Data transforms
