@@ -255,7 +255,6 @@ jobs:
           
   # Clean up model files after evaluation (only on push events)
   cleanup-model:
-    needs: [evaluate-model, update-leaderboard]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
