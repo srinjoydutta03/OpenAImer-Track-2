@@ -2,6 +2,6 @@
   "username": "shadowbeast0",
   "teamname": "ByteMe",
   "model_format": "pytorch",
-  "model_size_mb": 0.105,
-  "additional_notes": "Compress ResNet18 model with half layer1 and Static Quantization (INT8)"
+  "model_size_mb": 0.358,
+  "additional_notes": "Compress ResNet18 model with half layer1 and Weighted Pruning"
 }
