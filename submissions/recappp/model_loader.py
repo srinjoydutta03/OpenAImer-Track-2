@@ -2,7 +2,7 @@ def load_model(model_path, device='cpu'):
     from torchvision import models
     import torch.nn as nn
 
-    model = models.resnet18(pretrained=False)
+    model = models.resnet18(pretrained=True)
 
     # Remove all residual layers
     model.layer1 = nn.Identity()
