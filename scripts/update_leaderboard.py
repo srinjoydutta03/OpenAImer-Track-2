@@ -233,8 +233,8 @@ def main():
     
     # Calculate normalized scores
     size_score = 44.7 / args.model_size  # Baseline size / submission size
-    latency_score = 23.5 / args.latency  # Baseline latency / submission latency
-    accuracy_score = args.accuracy / 69.76  # Submission accuracy / baseline accuracy
+    latency_score = 30.0 / args.latency  # Baseline latency / submission latency
+    accuracy_score = args.accuracy / 40.0  # Submission accuracy / baseline accuracy
     
     # Read current leaderboard and raw results
     leaderboard_df = read_current_leaderboard(args.leaderboard_file)

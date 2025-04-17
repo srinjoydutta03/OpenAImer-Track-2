@@ -20,6 +20,7 @@ on:
       - 'submissions/**'
 
 jobs:
+  # Only runs on PR events to validate submission structure
   validate-submission:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -82,18 +83,67 @@ jobs:
           # All checks passed
           echo "valid=true" >> $GITHUB_OUTPUT
           
+  # Only runs on push (merged PR) or workflow_dispatch events
   evaluate-model:
-    needs: validate-submission
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && needs.validate-submission.outputs.valid == 'true')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
+      username: ${{ steps.get-username.outputs.username }}
       model_size: ${{ steps.evaluate.outputs.model_size }}
       latency: ${{ steps.evaluate.outputs.latency }}
       accuracy: ${{ steps.evaluate.outputs.accuracy }}
       total_score: ${{ steps.evaluate.outputs.total_score }}
     steps:
       - uses: actions/checkout@v3
-        
+      
+      - name: Get username
+        id: get-username
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            USERNAME="${{ github.event.inputs.username }}"
+          else
+            # For push events, check if it's a merge from a PR
+            PR_NUMBER=$(git log -1 --pretty=%B | grep -oP 'Merge pull request #\K\d+' || echo "")
+            
+            if [ -n "$PR_NUMBER" ]; then
+              echo "This is a merge from PR #$PR_NUMBER, getting details from GitHub API"
+              # Get PR details using GitHub API
+              PR_FILES=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/files --jq '.[].filename')
+              echo "PR Files: $PR_FILES"
+              USERNAME=$(echo "$PR_FILES" | grep -oP 'submissions/\K[^/]+' | sort | uniq | head -1)
+              echo "Username from PR #$PR_NUMBER: $USERNAME"
+            else
+              # For direct pushes, get a comprehensive list of changed files
+              git fetch --prune --unshallow || true
+              CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+              
+              # Try to extract username from submissions directory pattern
+              USERNAME=$(echo "$CHANGED_FILES" | grep -oP 'submissions/\K[^/]+' | sort | uniq | head -1)
+              echo "Detected username from changed files: $USERNAME"
+              
+              # If detection fails, try to get it from the commit message
+              if [ -z "$USERNAME" ]; then
+                echo "Username detection from files failed, trying commit message..."
+                COMMIT_MSG=$(git log -1 --pretty=%B)
+                # Look for patterns like "username/user123" or "from username" in commit message
+                USERNAME=$(echo "$COMMIT_MSG" | grep -oP '(?:from|by|for)\s+\K\w+' | head -1)
+                echo "Username from commit message: $USERNAME"
+              fi
+            fi
+            
+            # Default to baseline if all detection methods fail
+            if [ -z "$USERNAME" ]; then
+              echo "WARNING: Could not detect username, using baseline"
+              USERNAME="baseline"
+            fi
+          fi
+          echo "Final username: $USERNAME"
+          echo "username=$USERNAME" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -136,13 +186,7 @@ jobs:
       - name: Evaluate model
         id: evaluate
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            USERNAME="${{ github.event.inputs.username }}"
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            USERNAME="${{ needs.validate-submission.outputs.username }}"
-          else
-            USERNAME="baseline"  # Default for push events
-          fi
+          USERNAME="${{ steps.get-username.outputs.username }}"
           python scripts/evaluate.py \
             --submission_dir "submissions/$USERNAME" \
             --data_dir "./data" \
@@ -163,9 +207,10 @@ jobs:
           echo "accuracy=$ACCURACY" >> $GITHUB_OUTPUT
           echo "total_score=$TOTAL_SCORE" >> $GITHUB_OUTPUT
           
+  # Only runs on push (merged PR) or workflow_dispatch events
   update-leaderboard:
     needs: evaluate-model
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -182,12 +227,7 @@ jobs:
           
       - name: Update leaderboard
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            USERNAME="${{ github.event.inputs.username }}"
-          else
-            USERNAME="baseline"  # Default for push events
-          fi
-          
+          USERNAME="${{ needs.evaluate-model.outputs.username }}"
           MODEL_SIZE="${{ needs.evaluate-model.outputs.model_size }}"
           LATENCY="${{ needs.evaluate-model.outputs.latency }}"
           ACCURACY="${{ needs.evaluate-model.outputs.accuracy }}"
@@ -208,8 +248,66 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add LEADERBOARD.md
-          # git commit -m "Update leaderboard with submission from ${{ needs.validate-submission.outputs.username }}"
-          git commit -m "Update leaderboard with submission from baseline"
+          git commit -m "Update leaderboard with submission from ${{ needs.evaluate-model.outputs.username }}"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          
+  # Clean up model files after evaluation (only on push events)
+  cleanup-model:
+    needs: [evaluate-model, update-leaderboard]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Delete model files
+        run: |
+          USERNAME="${{ needs.evaluate-model.outputs.username }}"
+          if [ -d "submissions/$USERNAME" ] && [ "$USERNAME" != "baseline" ]; then
+            MODEL_FILES=$(find "submissions/$USERNAME" -type f -name "model.*")
+            if [ -n "$MODEL_FILES" ]; then
+              for MODEL_FILE in $MODEL_FILES; do
+                echo "Deleting model file: $MODEL_FILE"
+                rm -f "$MODEL_FILE"
+              done
+              
+              # Create a placeholder file to indicate model was deleted after evaluation
+              echo "Model was evaluated and removed on $(date)" > "submissions/$USERNAME/model.evaluated"
+              
+              # Commit and push changes with proper git setup
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              
+              # Pull latest changes to avoid conflicts
+              git pull --rebase origin main
+              
+              # Add, commit and push with retry logic
+              git add "submissions/$USERNAME"
+              git commit -m "Clean up model files for $USERNAME after evaluation"
+              
+              # Try to push up to 3 times with pull before each retry
+              MAX_RETRIES=3
+              RETRY=0
+              while [ $RETRY -lt $MAX_RETRIES ]; do
+                if git push; then
+                  echo "Successfully pushed changes"
+                  break
+                else
+                  RETRY=$((RETRY+1))
+                  echo "Push failed, retrying ($RETRY/$MAX_RETRIES)..."
+                  if [ $RETRY -lt $MAX_RETRIES ]; then
+                    git pull --rebase origin main
+                    sleep 3
+                  fi
+                fi
+              done
+              
+              if [ $RETRY -eq $MAX_RETRIES ]; then
+                echo "Failed to push after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 

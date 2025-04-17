@@ -1,0 +1,6 @@
+{
+    "username": "sohambose1",
+    "model_format": "pytorch",
+    "model_size_mb": 47,
+    "additional_notes": "Standard ResNet18 model used as baseline"
+  } 
