@@ -275,8 +275,14 @@ def prepare_data_loader(data_dir, model_format, batch_size=1):
     """Prepare data loader for the validation dataset."""
     if model_format in ['pytorch', 'pt', 'pth']:
         transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Lambda(lambda img: img.convert("RGB")),  # Force 3 channels
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
             transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],   # ImageNet mean
+                std=[0.229, 0.224, 0.225]     # ImageNet std
+            )
         ])
         
         dataset = ImageFolder(root=data_dir, transform=transform)
@@ -284,8 +290,14 @@ def prepare_data_loader(data_dir, model_format, batch_size=1):
         
     elif model_format in ['tensorflow', 'tf', 'h5', 'pb', 'saved_model', 'tflite']:
         transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Lambda(lambda img: img.convert("RGB")),  
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
             transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],   
+                std=[0.229, 0.224, 0.225]     
+            )
         ])
         
         dataset = ImageFolder(root=data_dir, transform=transform)
