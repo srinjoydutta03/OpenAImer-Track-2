@@ -1,68 +1,92 @@
+import os
 import torch
 import torch.nn as nn
 import torchvision.models as models
-import os
 
 class ModelLoader:
-    def _init_(self, architecture='resnet18', num_classes=100):
+    def _init_(
+        self,
+        architecture: str = "resnet18",
+        num_classes: int = 100,
+        device: str = None,
+    ):
         """
-        Initialize the model architecture.
+        A flexible loader for torchvision-based models.
 
         Args:
-            architecture (str): Name of the architecture. Currently supports 'resnet18'.
-            num_classes (int): Number of output classes.
+            architecture (str): Model architecture, e.g. "resnet18".
+            num_classes (int): Number of output logits.
+            device (str): torch device string, e.g. "cuda:0" or "cpu".
         """
-        self.architecture = architecture
+        self.architecture = architecture.lower()
         self.num_classes = num_classes
-        self.model = self._initialize_model()
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self._initialize_model().to(self.device)
 
-    def _initialize_model(self):
-        """
-        Initializes the model architecture.
-
-        Returns:
-            torch.nn.Module: The initialized model.
-        """
-        if self.architecture == 'resnet18':
-            model = models.resnet18()
-            model.fc = nn.Linear(model.fc.in_features, self.num_classes)
+    def _initialize_model(self) -> nn.Module:
+        """Instantiate the chosen architecture and adjust its final layer."""
+        if self.architecture == "resnet18":
+            model = models.resnet18(pretrained=False)
+            in_feats = model.fc.in_features
+            model.fc = nn.Linear(in_feats, self.num_classes)
         else:
-            raise NotImplementedError(f"Architecture '{self.architecture}' is not supported.")
+            raise NotImplementedError(
+                f"Architecture '{self.architecture}' is not implemented."
+            )
         return model
 
-    def load_weights(self, checkpoint_path):
+    def load_weights(self, checkpoint_path: str) -> nn.Module:
         """
-        Loads weights into the model.
+        Load weights into the model, handling various checkpoint formats.
 
         Args:
-            checkpoint_path (str): Path to the checkpoint file.
+            checkpoint_path (str): Path to the .pth checkpoint.
+
+        Returns:
+            nn.Module: The model with loaded weights, set to eval mode.
         """
-        if not os.path.exists(checkpoint_path):
-            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+        if not os.path.isfile(checkpoint_path):
+            raise FileNotFoundError(f"No checkpoint found at '{checkpoint_path}'")
 
-        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        raw = torch.load(checkpoint_path, map_location="cpu")
 
-        if 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
-            state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
-            self.model.load_state_dict(state_dict)
+        # Determine where the state_dict lives
+        if isinstance(raw, dict):
+            # common keys to look for
+            for key in ("state_dict", "model_state_dict", "model"):
+                if key in raw:
+                    state_dict = raw[key]
+                    break
+            else:
+                # assume the dict is the state_dict
+                state_dict = raw
+        elif isinstance(raw, torch.nn.Module):
+            # checkpoint is a full model object
+            self.model = raw.to(self.device)
+            self.model.eval()
+            return self.model
         else:
-            self.model.load_state_dict(checkpoint)
+            raise RuntimeError(f"Unrecognized checkpoint format: {type(raw)}")
 
+        # Clean any DataParallel "module." prefixes
+        cleaned = {
+            k.replace("module.", ""): v for k, v in state_dict.items()
+        }
+
+        # Load into model
+        self.model.load_state_dict(cleaned, strict=True)
+        self.model.to(self.device)
         self.model.eval()
         return self.model
 
-    def get_model(self):
-        """
-        Returns the model instance.
-
-        Returns:
-            torch.nn.Module: The model.
-        """
+    def get_model(self) -> nn.Module:
+        """Return the model (already on correct device)."""
         return self.model
 
-# Example usage
+
 if _name_ == "_main_":
-    loader = ModelLoader(architecture='resnet18', num_classes=100)
-    model = loader.load_weights("model.pth")
-    print("Model loaded successfully.")
+    # Quick smoke-test
+    ckpt = "model.pth"
+    loader = ModelLoader(architecture="resnet18", num_classes=100)
+    model = loader.load_weights(ckpt)
+    print(f"Loaded {loader.architecture} → {type(model)} on {loader.device}")
