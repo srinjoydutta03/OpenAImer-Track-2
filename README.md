@@ -1,92 +1,132 @@
-# ResNet18 Model Compression Challenge
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.quantization
+from torchvision import datasets, transforms, models
+from torch.utils.data import DataLoader
+import time
+import os
 
-## Overview
-Welcome to the ResNet18 Model Compression Challenge! This competition invites participants to compress a standard ResNet18 model while maintaining maximum performance. Your goal is to reduce model size and inference latency while preserving accuracy using techniques such as:
+# ==== CONFIG ====
+BATCH_SIZE = 64
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+EPOCHS = 3
+DATA_DIR = "./data"  # Download Kaggle data to this folder manually
 
-- Pruning
-- Knowledge distillation
-- Quantization
-- Architecture optimization
-- Any other compression method
+# ==== TRANSFORMS ====
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
 
-## Competition Rules
+train_set = datasets.ImageFolder(os.path.join(DATA_DIR, "train"), transform=transform)
+val_set = datasets.ImageFolder(os.path.join(DATA_DIR, "val"), transform=transform)
 
-### Model Requirements
-- Base model: ResNet18
-- Supported formats: PyTorch (.pt/.pth), TensorFlow (.h5/.pb/.saved_model), TFLite (.tflite)
-- Model inputs/outputs must maintain the same interface as the original ResNet18
+train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
+val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False)
 
-### Evaluation Criteria
-Models will be evaluated on a weighted combination of:
-1. **Model Size** (30%): The on-disk size of your model in MB
-2. **Latency** (30%): Average inference time on our evaluation hardware
-3. **Accuracy** (40%): Top-1 accuracy on the validation dataset
+# ==== TEACHER MODEL ====
+teacher = models.resnet18(pretrained=True).to(DEVICE)
+teacher.eval()
 
-Dataset will be resized to (224, 224) size only during evaluation. No other data augmentation has been applied, ensure your model supports it
+# ==== STUDENT MODEL ====
+student = models.resnet18()
+student.fc = nn.Linear(student.fc.in_features, len(train_set.classes))  # match num classes
+student.to(DEVICE)
 
-The final score is calculated as:
-```
-Final Score = (Size_Score × 0.3) + (Latency_Score × 0.3) + (Accuracy_Score × 0.4)
-```
+# ==== DISTILLATION LOSS ====
+def distillation_loss(student_out, teacher_out, target, T=4.0, alpha=0.7):
+    soft_loss = F.kl_div(
+        F.log_softmax(student_out / T, dim=1),
+        F.softmax(teacher_out / T, dim=1),
+        reduction='batchmean'
+    ) * (T * T)
+    hard_loss = F.cross_entropy(student_out, target)
+    return alpha * soft_loss + (1 - alpha) * hard_loss
 
-Each metric is normalized relative to the original ResNet18 baseline performance.
+# ==== TRAIN STUDENT ====
+optimizer = torch.optim.Adam(student.parameters(), lr=1e-3)
 
-## Submission Process
+print("Training student model with distillation...")
+for epoch in range(EPOCHS):
+    student.train()
+    total_loss = 0
+    for imgs, labels in train_loader:
+        imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
+        optimizer.zero_grad()
+        with torch.no_grad():
+            teacher_out = teacher(imgs)
+        student_out = student(imgs)
+        loss = distillation_loss(student_out, teacher_out, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {total_loss/len(train_loader):.4f}")
 
-### How to Submit
-1. Fork this repository
-2. Place your compressed model in the `submissions/` directory with the following structure:
-   ```
-   submissions/
-   └── [your-github-username]/
-       ├── model.{pt|pth|h5|pb|saved_model|tflite}
-       └── metadata.json
-       └── model_loader.py (optional)
-       └── requirements.txt (optional)
-   ```
+# ==== EVALUATE ACCURACY ====
+def evaluate(model):
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for imgs, labels in val_loader:
+            imgs, labels = imgs.to(DEVICE), labels.to(DEVICE)
+            outputs = model(imgs)
+            _, preds = torch.max(outputs, 1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+    return correct / total
 
-   If you happen to create a complex model that doesn't support standard model loading as mentioned in the evaluate_script, you can provide a `model_loader.py` script of your own which will contain a `load_model` function that will load your model from your path. Also, any external dependencies that you might need specify them in `requirements.txt` file.
-3. Create a `metadata.json` file with the following information:
-   ```json
-   {
-     "username": "your-github-username",
-     "teamname": "your-team-name",
-     "model_format": "pytorch|tensorflow|tflite",
-   }
-   ```
-4. Submit a Pull Request (PR) to this repository with your submission
+acc = evaluate(student)
+print(f"✅ Accuracy: {acc:.4f}")
 
-### Evaluation Process
-- Our GitHub Actions workflow will automatically evaluate your model when you submit a PR
-- The workflow downloads the validation dataset using secure credentials
-- Models are evaluated for size, latency, and accuracy
-- Results are automatically added to the leaderboard
-- If you submit multiple PRs, only your best submission will be displayed
+# ==== PRUNING ====
+print("✂  Applying pruning...")
+import torch.nn.utils.prune as prune
+parameters_to_prune = []
+for module in student.modules():
+    if isinstance(module, torch.nn.Conv2d):
+        parameters_to_prune.append((module, 'weight'))
 
-## Validation Dataset
-The validation dataset is hosted privately on Kaggle and will be accessed securely during evaluation. The dataset consists of standard validation images similar to the training set for classification.
+prune.global_unstructured(
+    parameters_to_prune,
+    pruning_method=prune.L1Unstructured,
+    amount=0.4,
+)
 
-## Leaderboard
-The current leaderboard can be found in [LEADERBOARD.md](LEADERBOARD.md). It is automatically updated with each successful submission and ranks participants by their final score.
+# ==== QUANTIZATION ====
+print("📦 Applying quantization...")
+student.eval()
+student.qconfig = torch.quantization.get_default_qconfig("fbgemm")
+student_fused = torch.quantization.fuse_modules(student, [['conv1', 'bn1', 'relu']], inplace=False)
+student_prepared = torch.quantization.prepare(student_fused, inplace=False)
 
-## Important Dates
-- Competition Start: 12-April-2025 6:00 PM IST
-- Submission Start: 17-April-2025 6:00 PM IST
-- Submission Deadline: 17-April-2025 11:59 PM IST
+# Calibrate with one batch
+with torch.no_grad():
+    for imgs, _ in val_loader:
+        student_prepared(imgs.to(DEVICE))
+        break
 
-#### PR'S SHOULD ONLY BE SUBMITTED IN THE PERIOD MENTIONED ABOVE, ANY PR'S BEFORE THE SUBMISSION START WILL BE DECLARED NULL AND VOID AND MAY INCUR NEGATIVE POINTS
+student_quantized = torch.quantization.convert(student_prepared, inplace=False)
+student_quantized.to("cpu")
 
-## Technical Requirements
-- Your model must load using standard PyTorch, TensorFlow, or TFLite loading functions
-- Input preprocessing must match the original ResNet18 requirements
-- Output format must match the original ResNet18 (100-class softmax predictions)
+# ==== MEASURE LATENCY ====
+print("⏱  Measuring inference time...")
+sample = torch.randn(1, 3, 224, 224)
+repeats = 50
+start = time.time()
+for _ in range(repeats):
+    _ = student_quantized(sample)
+end = time.time()
+latency = (end - start) / repeats * 1000
+print(f"🚀 Avg Latency: {latency:.2f} ms")
 
-## Resources
-- [Original ResNet18 Documentation](https://pytorch.org/hub/pytorch_vision_resnet/)
-- [Model Compression Techniques Overview](https://arxiv.org/abs/1710.09282)
-- [Baseline Performance Metrics](BASELINE.md)
+# ==== MODEL SIZE ====
+torch.save(student_quantized.state_dict(), "compressed_model.pth")
+model_size = os.path.getsize("compressed_model.pth") / 1e6
+print(f"💾 Model Size: {model_size:.2f} MB")
 
-## Questions and Support
-For questions or support, please open an issue in this repository.
-
-Good luck! 
+# ==== DONE ====
+print("🎯 Final Metrics:")
+print(f"Accuracy: {acc*100:.2f}%")
+print(f"Latency: {latency:.2f} ms")
+print(f"Size: {model_size:.2f} MB")
