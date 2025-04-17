@@ -1,6 +1,6 @@
 import torch
 import time
-
+#load model
 def load_model(model_path,model_format=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = torch.jit.load(model_path, map_location=device)
