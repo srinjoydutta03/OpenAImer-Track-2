@@ -146,6 +146,7 @@ def measure_latency(model, model_format, data_loader, num_runs=100):
         
         # Warm up
         for inputs, _ in data_loader:
+            inputs = inputs.to(dtype=next(model.parameters()).dtype)
             inputs = inputs.to(device)
             with torch.no_grad():
                 _ = model(inputs)
@@ -230,6 +231,7 @@ def evaluate_accuracy(model, model_format, data_loader):
         
         with torch.no_grad():
             for inputs, labels in data_loader:
+                inputs, labels = inputs.to(dtype=next(model.parameters()).dtype), labels.to(device)
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
