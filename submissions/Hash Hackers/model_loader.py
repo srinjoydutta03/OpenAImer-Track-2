@@ -1,37 +1,32 @@
-# model_loader.py
 import torch
+import torch.nn as nn
 import torchvision.models as models
+import os
 
-def load_model(model_path, num_classes=100):
+def load_model(checkpoint_path: str, num_classes: int = 100):
    
-    
-    model = models.resnet18(pretrained=False) 
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
     
-    model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-    
-   
-    try:
-        state_dict = torch.load(model_path, map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
-        model.load_state_dict(state_dict) 
-        print("Model loaded successfully.")
-    except Exception as e:
-        print(f"Error loading model weights: {e}")
-        raise
+    model = models.resnet18()
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
 
-   
+    # Load checkpoint
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+
+    # Handle state_dict if present
+    if 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+        new_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+        model.load_state_dict(new_state_dict)
+    else:
+        model.load_state_dict(checkpoint)
+
     model.eval()
-    
     return model
 
-if __name__ == "__main__":
-    model_path = "model.pth"  
-    model = load_model(model_path)
-
-  
-    input_tensor = torch.randn(1, 3, 224, 224)  
-
-    with torch.no_grad(): 
-        output = model(input_tensor)
-
-    print("Model output:", output)
+if _name_ == "_main_":
+    # Example usage
+    model = load_model("model.pth")
+    print("Model loaded successfully.")
