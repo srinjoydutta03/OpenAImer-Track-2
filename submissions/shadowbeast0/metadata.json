@@ -1,0 +1,7 @@
+{
+  "username": "shadowbeast0",
+  "teamname": "ByteMe",
+  "model_format": "pytorch",
+  "model_size_mb": 42.8,
+  "additional_notes": "Standard ResNet18 model with second order pruning"
+}
