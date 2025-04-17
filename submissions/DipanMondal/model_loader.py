@@ -1,3 +1,4 @@
+# B.B.J.S. model second submission
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
