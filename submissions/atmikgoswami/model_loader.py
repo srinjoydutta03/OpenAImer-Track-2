@@ -77,7 +77,7 @@ def load_model(model_path):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = PrunedResNet()
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.to(device)
     model.eval()
     return model
