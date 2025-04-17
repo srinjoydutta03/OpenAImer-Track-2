@@ -1,37 +1,68 @@
-# model_loader.py
 import torch
+import torch.nn as nn
 import torchvision.models as models
+import os
 
-def load_model(model_path, num_classes=100):
-   
-    
-    model = models.resnet18(pretrained=False) 
+class ModelLoader:
+    def _init_(self, architecture='resnet18', num_classes=100):
+        """
+        Initialize the model architecture.
 
-    
-    model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
-    
-   
-    try:
-        state_dict = torch.load(model_path, map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))  
-        model.load_state_dict(state_dict) 
-        print("Model loaded successfully.")
-    except Exception as e:
-        print(f"Error loading model weights: {e}")
-        raise
+        Args:
+            architecture (str): Name of the architecture. Currently supports 'resnet18'.
+            num_classes (int): Number of output classes.
+        """
+        self.architecture = architecture
+        self.num_classes = num_classes
+        self.model = self._initialize_model()
 
-   
-    model.eval()
-    
-    return model
+    def _initialize_model(self):
+        """
+        Initializes the model architecture.
 
-if __name__ == "__main__":
-    model_path = "model.pth"  
-    model = load_model(model_path)
+        Returns:
+            torch.nn.Module: The initialized model.
+        """
+        if self.architecture == 'resnet18':
+            model = models.resnet18()
+            model.fc = nn.Linear(model.fc.in_features, self.num_classes)
+        else:
+            raise NotImplementedError(f"Architecture '{self.architecture}' is not supported.")
+        return model
 
-  
-    input_tensor = torch.randn(1, 3, 224, 224)  
+    def load_weights(self, checkpoint_path):
+        """
+        Loads weights into the model.
 
-    with torch.no_grad(): 
-        output = model(input_tensor)
+        Args:
+            checkpoint_path (str): Path to the checkpoint file.
+        """
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    print("Model output:", output)
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+
+        if 'state_dict' in checkpoint:
+            state_dict = checkpoint['state_dict']
+            state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+            self.model.load_state_dict(state_dict)
+        else:
+            self.model.load_state_dict(checkpoint)
+
+        self.model.eval()
+        return self.model
+
+    def get_model(self):
+        """
+        Returns the model instance.
+
+        Returns:
+            torch.nn.Module: The model.
+        """
+        return self.model
+
+# Example usage
+if _name_ == "_main_":
+    loader = ModelLoader(architecture='resnet18', num_classes=100)
+    model = loader.load_weights("model.pth")
+    print("Model loaded successfully.")
