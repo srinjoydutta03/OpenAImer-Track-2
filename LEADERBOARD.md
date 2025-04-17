@@ -1,11 +1,12 @@
 # ResNet18 Model Compression Challenge Leaderboard
 
-Last updated: 2025-04-17 11:09:18 UTC
+Last updated: 2025-04-17 13:56:37 UTC
 
 | Rank | Username | Model Size (MB) | Size Score | Latency (ms) | Latency Score | Accuracy (%) | Accuracy Score | Total Score | Submission Date |
 |------|----------|----------------|------------|--------------|---------------|--------------|----------------|-------------|------------------|
 | 1 | baseline | 44.70 | 1.00 | 30.00 | 1.00 | 40.00 | 1.00 | 1.00 | N/A |
 | 2 | sohambose1 | 42.91 | 1.04 | 30.24 | 0.99 | 28.66 | 0.72 | 0.90 | 2025-04-13 19:02:57 UTC |
+| 3 | Sayandip2023 | 42.91 | 1.04 | 30.47 | 0.98 | 3.80 | 0.10 | 0.65 | 2025-04-17 13:56:36 UTC |
 
 ## Scoring Details
 
@@ -25,5 +26,6 @@ Last updated: 2025-04-17 11:09:18 UTC
 | baseline | 42.91 | 30.51 | 28.66 | 0.89 | 2025-04-13 18:32:54 UTC |  |
 | sohambose1 | 42.91 | 30.24 | 28.66 | 0.90 | 2025-04-13 19:02:57 UTC |  |
 | baseline | 42.91 | 30.63 | 28.96 | 0.90 | 2025-04-17 11:09:18 UTC |  |
+| Sayandip2023 | 42.91 | 30.47 | 3.80 | 0.65 | 2025-04-17 13:56:36 UTC |  |
 
 </details>
