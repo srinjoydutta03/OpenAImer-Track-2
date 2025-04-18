@@ -1,0 +1,6 @@
+{
+    "model_format": "pytorch",
+    "architecture": "slim_resnet18",
+    "num_classes": 100,
+    "architecture_file": "trained_pruned_architecture.json"
+}
